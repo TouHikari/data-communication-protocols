@@ -1,12 +1,15 @@
 package top.touhikari;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * TCP 滑动窗口（累积确认）模拟器核心逻辑类。
  * 独立于 UI 界面，仅维护发送和接收的状态及序列号。
  */
 public class TcpSimulator {
     // 窗口大小限制
-    private final int windowSize = 4;
+    private int windowSize = 4;
     
     // 发送方状态
     private int base = 0;           // 最早未被确认的序号
@@ -21,6 +24,40 @@ public class TcpSimulator {
      */
     public boolean canSend() {
         return nextSeqNum < base + windowSize;
+    }
+
+    /**
+     * 动态设置滑动窗口大小
+     * @param newSize 新的窗口大小
+     * @return 如果可以设置返回 true，如果新窗口小于当前已发送未确认的包数则返回 false
+     */
+    public boolean setWindowSize(int newSize) {
+        if (newSize < 1) return false;
+        int unackedCount = nextSeqNum - base;
+        if (newSize < unackedCount) {
+            // 不允许缩小到比当前正在传输的包还小的范围
+            return false;
+        }
+        this.windowSize = newSize;
+        return true;
+    }
+
+    /**
+     * 尝试发送指定数量的数据包
+     * @param count 期望发送的数量
+     * @return 实际成功发送的序列号列表（受限于当前窗口剩余大小）
+     */
+    public List<Integer> sendPackets(int count) {
+        List<Integer> sentSeqs = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            if (canSend()) {
+                sentSeqs.add(nextSeqNum);
+                nextSeqNum++;
+            } else {
+                break; // 窗口已满，无法发送更多
+            }
+        }
+        return sentSeqs;
     }
 
     /**
